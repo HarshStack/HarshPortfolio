@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Harsh Saini — GenAI Engineer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Titillium+Web:wght@300;400;600;700;900&family=JetBrains+Mono:wght@400;500;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0c;
+    --bg-panel:#131316;
+    --bg-panel-2:#1b1b1f;
+    --line:#28282e;
+    --red:#ff1e00;
+    --red-dim:#8a1200;
+    --amber:#ffb800;
+    --white-tire:#e8e6e0;
+    --text:#f2f1ec;
+    --text-muted:#8b8b92;
+    --purple:#9d4edd;
+    --green:#00e676;
+    --display:'Titillium Web',sans-serif;
+    --mono:'JetBrains Mono',monospace;
+    --body:'Barlow',sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;}
+  html{scroll-behavior:smooth;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:var(--body);
+    overflow-x:hidden;
+  }
+  ::selection{background:var(--red);color:#fff;}
+
+  /* ---------- background texture ---------- */
+  .carbon{
+    position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:
+      repeating-linear-gradient(45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 6px),
+      repeating-linear-gradient(-45deg, rgba(255,255,255,0.015) 0px, rgba(255,255,255,0.015) 1px, transparent 1px, transparent 6px);
+    opacity:0.5;
+  }
+
+  /* ---------- HUD bar ---------- */
+  .hud{
+    position:fixed;top:0;left:0;right:0;z-index:100;
+    height:56px;
+    background:rgba(10,10,12,0.88);
+    backdrop-filter:blur(10px);
+    border-bottom:1px solid var(--line);
+    display:flex;align-items:center;
+    padding:0 20px;
+    gap:20px;
+  }
+  .hud-badge{
+    display:flex;align-items:center;gap:10px;
+    font-family:var(--display);
+    flex-shrink:0;
+  }
+  .hud-badge .num{
+    width:34px;height:34px;
+    background:var(--red);
+    color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-weight:900;font-size:14px;
+    clip-path:polygon(15% 0,100% 0,85% 100%,0 100%);
+  }
+  .hud-badge .role{
+    font-size:11px;letter-spacing:0.08em;
+    color:var(--text-muted);
+    text-transform:uppercase;
+    display:none;
+  }
+  @media(min-width:640px){ .hud-badge .role{display:block;} }
+
+  .hud-track{
+    flex:1;
+    position:relative;
+    height:32px;
+    display:flex;align-items:center;
+    min-width:60px;
+  }
+  .hud-track svg{width:100%;height:100%;overflow:visible;}
+  .hud-track path.track-line{fill:none;stroke:var(--line);stroke-width:1.4;}
+  .hud-track .prog{stroke:var(--red);stroke-dasharray:1;stroke-dashoffset:1;transition:stroke-dashoffset .1s linear;stroke-width:1.4;fill:none;}
+  #hudCar{filter:drop-shadow(0 0 3px rgba(255,30,0,0.75));}
+  #hudCar.idle-rev{animation:idleRev 1s ease-in-out infinite;}
+  @keyframes idleRev{
+    0%,100%{filter:drop-shadow(0 0 3px rgba(255,30,0,0.75));}
+    50%{filter:drop-shadow(0 0 7px rgba(255,60,0,1));}
+  }
+
+  .hud-sectors{
+    display:none;
+    gap:10px;
+    font-family:var(--mono);
+    font-size:10px;
+    letter-spacing:.05em;
+    flex-shrink:0;
+  }
+  @media(min-width:900px){ .hud-sectors{display:flex;} }
+  .hud-sectors span{
+    color:var(--text-muted);
+    padding:3px 7px;
+    border:1px solid var(--line);
+    transition:all .25s ease;
+  }
+  .hud-sectors span.active{
+    color:var(--bg);
+    background:var(--green);
+    border-color:var(--green);
+  }
+
+  .hud-telemetry{
+    display:none;
+    align-items:center;
+    gap:16px;
+    font-family:var(--mono);
+    font-size:11px;
+    flex-shrink:0;
+  }
+  @media(min-width:1080px){ .hud-telemetry{display:flex;} }
+  .hud-telemetry .t-item{display:flex;flex-direction:column;align-items:flex-end;line-height:1.1;}
+  .hud-telemetry .t-label{color:var(--text-muted);font-size:9px;letter-spacing:.1em;}
+  .hud-telemetry .t-val{color:var(--amber);font-weight:700;font-variant-numeric:tabular-nums;}
+  .hud-telemetry .throttle{width:50px;height:4px;background:var(--bg-panel-2);position:relative;overflow:hidden;}
+  .hud-telemetry .throttle-fill{position:absolute;left:0;top:0;bottom:0;width:0%;background:var(--green);transition:width .1s linear;}
+
+  /* ---------- generic layout ---------- */
+  .wrap{max-width:1080px;margin:0 auto;padding:0 24px;}
+  section{position:relative;z-index:1;padding:120px 0 40px;scroll-margin-top:56px;}
+  footer{scroll-margin-top:56px;}
+  .eyebrow{
+    font-family:var(--mono);
+    font-size:12px;
+    letter-spacing:.15em;
+    color:var(--red);
+    text-transform:uppercase;
+    display:flex;align-items:center;gap:10px;
+    margin-bottom:18px;
+  }
+  .eyebrow::before{content:'';width:22px;height:2px;background:var(--red);}
+  h2.sector-title{
+    font-family:var(--display);
+    font-weight:900;
+    font-size:clamp(32px,5vw,52px);
+    letter-spacing:-0.01em;
+    text-transform:uppercase;
+    margin-bottom:8px;
+  }
+  .sector-sub{color:var(--text-muted);max-width:600px;margin-bottom:48px;font-size:15px;line-height:1.6;}
+
+  /* ---------- hero ---------- */
+  .hero{
+    min-height:100svh;
+    display:flex;flex-direction:column;justify-content:center;
+    padding-top:56px;
+    position:relative;
+  }
+  .hero-line{
+    position:absolute;top:0;left:0;right:0;height:100%;
+    pointer-events:none;overflow:hidden;
+  }
+  .hero-line svg{position:absolute;top:0;left:0;width:100%;height:100%;}
+  .hero-line path{
+    fill:none;stroke:var(--red);stroke-width:1.5;opacity:.35;
+    stroke-dasharray:6 10;
+    animation:dash 24s linear infinite;
+  }
+  @keyframes dash{to{stroke-dashoffset:-320;}}
+
+  .radio-msg{
+    font-family:var(--mono);
+    font-size:12px;
+    color:var(--green);
+    letter-spacing:.03em;
+    margin-bottom:22px;
+    display:flex;align-items:center;gap:8px;
+  }
+  .radio-msg .blip{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px var(--green);animation:blink 1.6s ease-in-out infinite;}
+  @keyframes blink{0%,100%{opacity:1;}50%{opacity:.25;}}
+
+  .hero h1{
+    font-family:var(--display);
+    font-weight:900;
+    font-size:clamp(48px,10vw,108px);
+    line-height:.92;
+    text-transform:uppercase;
+    letter-spacing:-0.02em;
+  }
+  .hero h1 span{color:var(--red);}
+  .hero .role-line{
+    font-family:var(--display);
+    font-weight:600;
+    font-size:clamp(16px,2.4vw,22px);
+    color:var(--text);
+    margin-top:18px;
+    max-width:640px;
+    letter-spacing:.01em;
+  }
+  .hero .loc{
+    font-family:var(--mono);font-size:12px;color:var(--text-muted);margin-top:14px;letter-spacing:.05em;
+  }
+
+
+  /* ---------- finish line / checkered flag ---------- */
+  .finish-line{
+    position:relative;z-index:1;
+    padding:70px 0 50px;
+    text-align:center;
+    opacity:0;
+    transform:translateY(14px) scale(.97);
+    transition:opacity .6s ease, transform .6s ease;
+  }
+  .finish-line.revealed{opacity:1;transform:translateY(0) scale(1);}
+  .finish-strip{width:100%;height:78px;margin:0 0 26px;border-top:1px solid #555;border-bottom:1px solid #555;position:relative;background-color:#f2f1ec;background-image:conic-gradient(#0a0a0c 25%,#f2f1ec 0 50%,#0a0a0c 0 75%,#f2f1ec 0);background-size:38px 38px;box-shadow:0 10px 22px rgba(0,0,0,.42);}
+  .finish-line .finish-text{
+    font-family:var(--display);
+    font-weight:900;
+    font-size:clamp(20px,3.4vw,30px);
+    letter-spacing:.06em;
+    text-transform:uppercase;
+  }
+  .finish-line .finish-sub{
+    font-family:var(--mono);
+    font-size:11px;
+    color:var(--text-muted);
+    letter-spacing:.08em;
+    margin-top:8px;
+  }
+  .hero-cta{display:flex;flex-wrap:wrap;gap:14px;margin-top:40px;}
+  .race-lights{
+    display:grid;grid-template-columns:repeat(5,24px);grid-template-rows:repeat(2,24px);
+    gap:9px 11px;justify-content:center;margin:0 auto 22px;width:max-content;
+    padding:14px 16px;background:linear-gradient(180deg,#1b1b1f,#0c0c0e);
+    border:1px solid #34343c;border-radius:6px;
+    box-shadow:inset 0 0 0 1px #050506, inset 0 1px 0 rgba(255,255,255,.04), 0 10px 24px rgba(0,0,0,.45);
+    position:relative;
+  }
+  .race-light{
+    position:relative;width:24px;height:24px;border-radius:50%;
+    background:radial-gradient(circle at 34% 30%,#38393f,#141417 65%,#0a0a0b 100%);
+    border:3px solid #050506;
+    box-shadow:inset 0 0 6px rgba(0,0,0,.85), inset 0 -2px 3px rgba(0,0,0,.6);
+    transition:background .12s ease,box-shadow .12s ease;
+    overflow:hidden;
+  }
+  .race-light::after{
+    content:'';position:absolute;top:14%;left:22%;width:38%;height:26%;
+    background:rgba(255,255,255,.5);border-radius:50%;filter:blur(0.8px);
+    transition:opacity .12s ease;opacity:.35;
+  }
+  .race-lights.red .race-light{
+    background:radial-gradient(circle at 34% 30%,#ff8b6a,#e11d12 55%,#7a0d00 100%);
+    box-shadow:0 0 16px 4px rgba(255,30,0,.85), inset 0 0 6px rgba(255,255,255,.25);
+  }
+  .race-lights.yellow .race-light{
+    background:radial-gradient(circle at 34% 30%,#ffe08a,var(--amber) 55%,#8a5c00 100%);
+    box-shadow:0 0 16px 4px rgba(255,184,0,.85), inset 0 0 6px rgba(255,255,255,.25);
+  }
+  .race-lights.green .race-light{
+    background:radial-gradient(circle at 34% 30%,#8affc4,var(--green) 55%,#007a3d 100%);
+    box-shadow:0 0 16px 4px rgba(0,230,118,.85), inset 0 0 6px rgba(255,255,255,.25);
+  }
+  .race-lights.red .race-light::after,
+  .race-lights.yellow .race-light::after,
+  .race-lights.green .race-light::after{opacity:.85;}
+  .btn{
+    font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.06em;
+    text-transform:uppercase;text-decoration:none;
+    padding:14px 24px;
+    display:inline-flex;align-items:center;gap:8px;
+    transition:transform .15s ease, background .15s ease, color .15s ease;
+    clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);
+  }
+  .btn-primary{background:var(--red);color:#fff;}
+  .btn-primary:hover{transform:translateY(-2px);}
+  .btn-ghost{background:transparent;color:var(--text);border:1px solid var(--line);}
+  .btn-ghost:hover{border-color:var(--red);color:var(--red);transform:translateY(-2px);}
+
+  /* ---------- timing tower (experience) ---------- */
+  .tower{border-top:1px solid var(--line);}
+  .tower-row{
+    border-bottom:1px solid var(--line);
+    padding:22px 0;
+    display:grid;
+    grid-template-columns:44px 1fr;
+    gap:18px;
+    align-items:start;
+  }
+  .tower-pos{
+    font-family:var(--mono);font-weight:700;font-size:15px;color:var(--text-muted);
+    padding-top:3px;
+  }
+  .tower-row.pb .tower-pos{color:var(--purple);}
+  .tower-head{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-bottom:8px;}
+  .tower-role{font-family:var(--display);font-weight:700;font-size:18px;text-transform:uppercase;}
+  .tower-badge{
+    font-family:var(--mono);font-size:10px;letter-spacing:.08em;
+    padding:3px 8px;background:var(--purple);color:#fff;text-transform:uppercase;
+  }
+  .tower-meta{
+    font-family:var(--mono);font-size:12px;color:var(--text-muted);
+    display:flex;flex-wrap:wrap;gap:6px 16px;margin-bottom:10px;
+  }
+  .tower-meta b{color:var(--amber);font-weight:500;}
+  .tower ul{list-style:none;color:var(--text);font-size:14.5px;line-height:1.7;}
+  .tower ul li{position:relative;padding-left:18px;color:#c8c7c2;}
+  .tower ul li::before{content:'▸';position:absolute;left:0;color:var(--red);}
+  .tower-sub{
+    margin-top:14px;padding:14px 16px;background:var(--bg-panel);border-left:2px solid var(--line);
+  }
+  .tower-sub .sub-title{font-family:var(--mono);font-size:11px;color:var(--amber);letter-spacing:.05em;margin-bottom:6px;text-transform:uppercase;}
+
+  /* ---------- pit board (projects) ---------- */
+  .pit-grid{display:grid;grid-template-columns:1fr;gap:24px;}
+  @media(min-width:800px){ .pit-grid{grid-template-columns:1fr 1fr;} }
+  .pit-card{
+    background:var(--bg-panel);
+    border:1px solid var(--line);
+    padding:28px;
+    position:relative;
+    overflow:hidden;
+  }
+  .pit-card::before{
+    content:'';position:absolute;top:0;left:0;right:0;height:4px;
+    background:linear-gradient(90deg,var(--red),transparent);
+  }
+  .pit-card .p-tag{font-family:var(--mono);font-size:10px;letter-spacing:.1em;color:var(--text-muted);text-transform:uppercase;margin-bottom:10px;}
+  .pit-card h3{font-family:var(--display);font-weight:700;font-size:20px;text-transform:uppercase;margin-bottom:14px;line-height:1.2;}
+  .pit-card p{color:#c8c7c2;font-size:14.5px;line-height:1.7;margin-bottom:16px;}
+  .stack{display:flex;flex-wrap:wrap;gap:7px;}
+  .chip{
+    font-family:var(--mono);font-size:11px;color:var(--text);
+    border:1px solid var(--line);padding:4px 9px;background:var(--bg);
+  }
+
+  /* ---------- tire compounds (skills) ---------- */
+  .compound-grid{display:grid;grid-template-columns:1fr;gap:18px;}
+  @media(min-width:760px){ .compound-grid{grid-template-columns:repeat(2,1fr);} }
+  .compound{
+    border:1px solid var(--line);
+    padding:22px 24px;
+    background:var(--bg-panel);
+  }
+  .compound-head{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .tire-icon{width:28px;height:28px;border-radius:50%;border:5px solid var(--c);position:relative;flex-shrink:0;}
+  .tire-icon::after{content:'';position:absolute;inset:5px;border-radius:50%;background:var(--bg-panel-2);}
+  .compound-name{font-family:var(--display);font-weight:700;font-size:15px;text-transform:uppercase;letter-spacing:.02em;}
+  .compound-desc{font-family:var(--mono);font-size:10.5px;color:var(--text-muted);letter-spacing:.03em;}
+  .compound .stack{margin-top:4px;}
+  .compound .chip{border-color:var(--c);color:var(--c);}
+
+  /* ---------- credentials ---------- */
+  .cred-grid{display:grid;grid-template-columns:1fr;gap:14px;}
+  @media(min-width:700px){ .cred-grid{grid-template-columns:repeat(3,1fr);} }
+  .cred-card{border:1px solid var(--line);padding:20px;background:var(--bg-panel);}
+  .cred-label{font-family:var(--mono);font-size:10px;color:var(--red);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px;}
+  .cred-title{font-family:var(--display);font-weight:700;font-size:15px;line-height:1.3;}
+  .cred-sub{font-family:var(--mono);font-size:11.5px;color:var(--text-muted);margin-top:6px;}
+
+  /* ---------- footer / radio ---------- */
+  footer{padding:100px 0 60px;border-top:1px solid var(--line);position:relative;z-index:1;}
+  .radio-box{
+    font-family:var(--mono);font-size:12px;color:var(--green);margin-bottom:24px;display:flex;align-items:center;gap:8px;
+  }
+  footer h2{
+    font-family:var(--display);font-weight:900;font-size:clamp(30px,6vw,56px);text-transform:uppercase;line-height:1;margin-bottom:28px;
+  }
+  .contact-grid{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:60px;}
+  .contact-link{
+    font-family:var(--mono);font-size:13px;color:var(--text);
+    border:1px solid var(--line);padding:12px 18px;text-decoration:none;
+    display:flex;align-items:center;gap:8px;
+    transition:border-color .15s ease,color .15s ease;
+  }
+  .contact-link:hover{border-color:var(--red);color:var(--red);}
+  .foot-bottom{
+    display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px;
+    font-family:var(--mono);font-size:11px;color:var(--text-muted);
+    padding-top:24px;border-top:1px solid var(--line);
+  }
+
+  @media (prefers-reduced-motion: reduce){
+    *{animation:none !important;transition:none !important;}
+    html{scroll-behavior:auto;}
+  }
+
+  a:focus-visible, button:focus-visible{outline:2px solid var(--amber);outline-offset:2px;}
+</style>
+</head>
+<body>
+
+<div class="carbon"></div>
+
+<!-- HUD -->
+<header class="hud">
+  <div class="hud-badge">
+    <div class="num">HS</div>
+    <div class="role">GenAI · Backend · Data</div>
+  </div>
+  <div class="hud-track">
+    <svg viewBox="0 0 100 16" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="carBodyGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="#ff5230"/>
+          <stop offset="100%" stop-color="#c01300"/>
+        </linearGradient>
+      </defs>
+      <path class="track-line" d="M0,8 L100,8"/>
+      <path class="prog" id="hudProgPath" d="M0,8 L100,8"/>
+      <g id="hudCar">
+        <g transform="scale(0.15) translate(-30,-21)">
+          <rect x="0" y="3" width="2.2" height="12" fill="#7a0f00"/><rect x="2" y="4.4" width="5.5" height="2.2" rx="0.4" fill="url(#carBodyGrad)"/>
+          <path d="M4,19 L12,19 L14,22.6 L4,22.6 Z" fill="#161616"/><rect x="6" y="16.4" width="46" height="3.1" rx="1.2" fill="url(#carBodyGrad)"/>
+          <path d="M11,9 Q10.5,15.5 15,17.2 L24,17.2 Q26.5,13 24,9 Q18,6.6 11,9 Z" fill="url(#carBodyGrad)"/>
+          <path d="M25.5,10.5 Q25.5,2 31,2 Q36.5,2 36.5,10.5" fill="none" stroke="#1c1c1c" stroke-width="1.7" stroke-linecap="round"/><rect x="28.6" y="0.4" width="4.2" height="3.6" rx="0.9" fill="#7a0f00"/>
+          <circle cx="31" cy="7.6" r="2.3" fill="#0d0d0d"/><circle cx="30.2" cy="6.9" r="0.55" fill="#e8e6e0"/>
+          <path d="M46,13.2 Q56,14.2 60,16.3 Q56,18.4 46,19.8 Z" fill="url(#carBodyGrad)"/><rect x="45.5" y="15.4" width="4" height="1.8" fill="#e8e6e0"/>
+          <rect x="52" y="19.4" width="2.1" height="3.8" fill="#7a0f00"/><rect x="53" y="20.3" width="7.4" height="1.7" rx="0.3" fill="url(#carBodyGrad)"/>
+          <circle cx="12" cy="21" r="4.3" fill="#111"/><circle cx="12" cy="21" r="2.9" fill="#232323"/><circle cx="12" cy="21" r="1.5" fill="#5a5a5a"/>
+          <circle cx="48" cy="21" r="4.3" fill="#111"/><circle cx="48" cy="21" r="2.9" fill="#232323"/><circle cx="48" cy="21" r="1.5" fill="#5a5a5a"/>
+        </g>
+      </g>
+    </svg>
+  </div>
+  <div class="hud-sectors" id="hudSectors">
+    <span data-s="hero">S1</span>
+    <span data-s="experience">S2</span>
+    <span data-s="projects">S3</span>
+    <span data-s="skills">S4</span>
+    <span data-s="contact">FIN</span>
+  </div>
+  <div class="hud-telemetry">
+    <div class="t-item"><span class="t-label">SPEED</span><span class="t-val" id="tSpeed">000 KM/H</span></div>
+    <div class="t-item"><span class="t-label">GEAR</span><span class="t-val" id="tGear">N</span></div>
+    <div class="t-item">
+      <span class="t-label">THROTTLE</span>
+      <div class="throttle"><div class="throttle-fill" id="tThrottle"></div></div>
+    </div>
+  </div>
+</header>
+
+<!-- HERO -->
+<section class="hero" id="hero">
+  <div class="hero-line">
+    <svg viewBox="0 0 1000 800" preserveAspectRatio="none">
+      <path d="M-50,650 C150,600 250,750 450,680 C650,610 750,720 1050,600"/>
+    </svg>
+  </div>
+  <div class="wrap">
+    <div class="race-lights red" id="raceLights" aria-label="Race lights: ready to start">
+      <span class="race-light"></span><span class="race-light"></span><span class="race-light"></span><span class="race-light"></span><span class="race-light"></span>
+      <span class="race-light"></span><span class="race-light"></span><span class="race-light"></span><span class="race-light"></span><span class="race-light"></span>
+    </div>
+    <div class="radio-msg"><span class="blip"></span> TEAM RADIO — "COPY THAT, BOX BOX FOR THE FULL BRIEF BELOW"</div>
+    <h1>HARSH<br><span>SAINI</span></h1>
+    <div class="role-line">GenAI Engineer — building Retrieval-Augmented Generation, multi-agent, and document-intelligence systems that hold up under real enterprise load, not just in a demo.</div>
+    <div class="loc">📍 BENGALURU, INDIA &nbsp;·&nbsp; CURRENTLY: ASSOCIATE CONSULTANT @ EMIDS TECHNOLOGIES</div>
+    <div class="hero-cta">
+      <a href="#experience" id="startLapBtn" class="btn btn-primary">Start the Lap ↓</a>
+      <a href="Harsh_Saini_Resume.pdf" download class="btn btn-ghost">Download CV</a>
+      <a href="https://github.com/HarshStack" target="_blank" rel="noopener" class="btn btn-ghost">GitHub</a>
+      <a href="https://www.linkedin.com/in/harsh-saini-1033102a5/" target="_blank" rel="noopener" class="btn btn-ghost">LinkedIn</a>
+    </div>
+  </div>
+</section>
+
+<!-- SECTOR 1: EXPERIENCE -->
+<section id="experience">
+  <div class="wrap">
+    <div class="eyebrow">Sector 1 / Timing Tower</div>
+    <h2 class="sector-title">Experience</h2>
+    <p class="sector-sub">Every role, logged like a lap — current stint highlighted purple, the way a real timing tower flags a personal best.</p>
+
+    <div class="tower">
+      <div class="tower-row pb">
+        <div class="tower-pos">P1</div>
+        <div>
+          <div class="tower-head">
+            <div class="tower-role">Associate Consultant — Emids Technologies</div>
+            <span class="tower-badge">PB · Current</span>
+          </div>
+          <div class="tower-meta"><b>Jul 2026 – Present</b> · Intelligent Document Processing (IDP) Platform · US Healthcare Client</div>
+          <ul>
+            <li>Built AI-powered document extraction workflows and production REST APIs (Python, FastAPI, PostgreSQL, Azure AI) that reduced manual document review effort.</li>
+            <li>Architected end-to-end IDP pipelines — ingestion, metadata extraction, validation, business-rule automation — improving extraction accuracy and throughput.</li>
+            <li>Partnered directly with US healthcare stakeholders to translate requirements into shipped features, and triaged production issues across the full SDLC.</li>
+            <li>Parsed and mapped HL7 and FHIR healthcare data within HIPAA-compliant ingestion practices, supporting denial management, payment posting, unbilled claims, and appeals workflows.</li>
+            <li>Integrated Docker, Redis, PostgreSQL, and CI/CD into the production pipeline for reliable document-processing delivery.</li>
+            <li>Supported document-intelligence workflows used by 10+ internal teams and processing thousands of production documents.</li>
+          </ul>
+          <div class="tower-sub">
+            <div class="sub-title">Also on track: PACCA Studio — Enterprise AI Productivity Platform</div>
+            <ul>
+              <li>Delivered full-stack features for an AI-powered knowledge management platform (React, TypeScript, Electron), integrating LLM-backed services into the UX.</li>
+              <li>Collaborated with backend and design teams in an Agile workflow, resolving production defects impacting healthcare productivity workflows.</li>
+              <li>Contributed to a platform adopted across 10+ Emids teams and designed Redis-backed notifications for asynchronous product events.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="tower-row">
+        <div class="tower-pos">P2</div>
+        <div>
+          <div class="tower-head"><div class="tower-role">AI &amp; Data Engineer Intern — Emids Technologies</div></div>
+          <div class="tower-meta"><b>Dec 2025 – Jul 2026</b> · SOW Intelligence Platform</div>
+          <ul>
+            <li>Built an AI-powered Statement of Work (SOW) processing platform (Python, FastAPI, PostgreSQL, Azure OpenAI, Docker) automating metadata extraction from enterprise contracts.</li>
+            <li>Designed modular metadata-extraction pipelines combining rule-based logic with LLM-powered enrichment for structured document understanding.</li>
+            <li>Shipped React/Node.js dashboard features for contract visibility, workflow tracking, and ownership management.</li>
+            <li>Processed 3,000+ SOWs (30,000+ pages) across PDFs, DOC/DOCX, tables, and structured/unstructured contracts with deterministic extraction, LLM enrichment, and validation.</li>
+            <li>Achieved a 4-second average processing time per SOW and implemented CI/CD for automated build, test, and deployment.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="tower-row">
+        <div class="tower-pos">P3</div>
+        <div>
+          <div class="tower-head"><div class="tower-role">Artificial Intelligence Intern — Edunet Foundation</div></div>
+          <div class="tower-meta"><b>May 2025 – Jun 2025</b> · Microsoft Azure AI Internship</div>
+          <ul>
+            <li>Designed scalable Azure Data Factory ETL pipelines processing 50K+ daily records, cutting pipeline processing time by 35%.</li>
+            <li>Improved an underperforming ML model's F1-score by 5% through feature engineering and hyperparameter tuning in an Agile sprint environment.</li>
+            <li>Built a cloud-native predictive analytics solution in Azure ML Studio, boosting route-planning efficiency by 15%.</li>
+            <li>Applied ETL and Power BI analytics across 50,000+ traffic records spanning 12 city routes.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTOR 2: PROJECTS -->
+<section id="projects">
+  <div class="wrap">
+    <div class="eyebrow">Sector 2 / Pit Board</div>
+    <h2 class="sector-title">Projects</h2>
+    <p class="sector-sub">Builds run outside the day job — full systems, not notebooks.</p>
+
+    <div class="pit-grid">
+      <div class="pit-card">
+        <div class="p-tag">Retrieval-Augmented Generation</div>
+        <h3>Enterprise Local RAG System</h3>
+        <p>An on-premise RAG platform with hybrid retrieval — dense embeddings, keyword search, and cross-encoder reranking working together to optimize accuracy and latency across large document collections. Improved retrieval precision 3× versus a vector-only baseline and reduced retrieval/embedding latency from 900ms to 650ms (28% faster), while holding end-to-end response time near 4.1 seconds.</p>
+        <div class="stack">
+          <span class="chip">FAISS</span><span class="chip">Sentence Transformers</span><span class="chip">Cross-Encoder</span><span class="chip">Llama</span><span class="chip">Streamlit</span>
+        </div>
+      </div>
+
+      <div class="pit-card">
+        <div class="p-tag">Multi-Agent Systems</div>
+        <h3>Autonomous Multi-Agent Research Assistant</h3>
+        <p>A multi-agent LLM system built on LangGraph with specialized planner, researcher, and critic agents that decompose complex queries, call external tools/APIs, and self-correct low-confidence outputs. Includes structured tool calling, state management, iterative output validation, and streaming FastAPI responses for a deployable agentic AI service.</p>
+        <div class="stack">
+          <span class="chip">LangGraph</span><span class="chip">Ollama</span><span class="chip">Azure OpenAI</span><span class="chip">FastAPI</span><span class="chip">Tool-Calling</span><span class="chip">Docker</span>
+        </div>
+      </div>
+
+      <div class="pit-card">
+        <div class="p-tag">Emotion AI · Real-Time NLP</div>
+        <h3>Emotion AI Companion</h3>
+        <p>Built real-time 28-emotion detection with Hugging Face Transformers and context-aware empathetic response generation. Logged the emotion label, confidence, and timestamp for every interaction, enabling weekly and monthly mood-trend dashboards.</p>
+        <div class="stack">
+          <span class="chip">Python</span><span class="chip">Flask</span><span class="chip">Hugging Face Transformers</span><span class="chip">GoEmotions</span><span class="chip">28-Class Detection</span><span class="chip">Mood Analytics</span>
+        </div>
+      </div>
+
+      <div class="pit-card">
+        <div class="p-tag">Enterprise Analytics · 50M+ Records</div>
+        <h3>Vendor Performance &amp; Profitability Analysis</h3>
+        <p>Analyzed 50M+ transactional records to identify vendor concentration risk, with the top 10 vendors accounting for 65.69% of purchases. Recommended a bulk-procurement strategy with $2.12M profit-optimization potential and uncovered a 10-point margin gap across performance tiers through hypothesis testing.</p>
+        <div class="stack">
+          <span class="chip">SQL</span><span class="chip">Python</span><span class="chip">Pandas</span><span class="chip">Power BI</span><span class="chip">Hypothesis Testing</span><span class="chip">Executive KPI Dashboard</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTOR 3: SKILLS -->
+<section id="skills">
+  <div class="wrap">
+    <div class="eyebrow">Sector 3 / Tire Compounds</div>
+    <h2 class="sector-title">Skills</h2>
+    <p class="sector-sub">Graded the way a tire wall is graded — from the compound reached for every day, to the durable stuff everything else rolls on.</p>
+
+    <div class="compound-grid">
+      <div class="compound" style="--c:var(--red)">
+        <div class="compound-head">
+          <div class="tire-icon"></div>
+          <div><div class="compound-name">Soft — GenAI &amp; LLM Systems</div><div class="compound-desc">Fastest compound. Reached for first, every build.</div></div>
+        </div>
+        <div class="stack">
+          <span class="chip">RAG (hybrid + reranking)</span><span class="chip">Multi-Agent (LangGraph)</span><span class="chip">LangChain</span><span class="chip">Tool Calling</span><span class="chip">Prompt Engineering</span><span class="chip">IDP</span><span class="chip">NLP</span><span class="chip">OCR</span><span class="chip">Vector Search (FAISS)</span><span class="chip">Embeddings</span><span class="chip">Azure OpenAI</span><span class="chip">Hugging Face</span><span class="chip">LLM Evaluation (RAGAS, Phoenix)</span><span class="chip">LoRA / QLoRA</span>
+        </div>
+      </div>
+
+      <div class="compound" style="--c:var(--amber)">
+        <div class="compound-head">
+          <div class="tire-icon"></div>
+          <div><div class="compound-name">Medium — Backend &amp; Languages</div><div class="compound-desc">The balance of pace and durability. Runs most of the race.</div></div>
+        </div>
+        <div class="stack">
+          <span class="chip">Python</span><span class="chip">SQL</span><span class="chip">Java</span><span class="chip">FastAPI</span><span class="chip">Redis</span><span class="chip">Node.js</span><span class="chip">REST API Design</span><span class="chip">Django</span>
+        </div>
+      </div>
+
+      <div class="compound" style="--c:var(--white-tire)">
+        <div class="compound-head">
+          <div class="tire-icon"></div>
+          <div><div class="compound-name">Hard — Data &amp; Cloud</div><div class="compound-desc">Built to last. The infrastructure everything else sits on.</div></div>
+        </div>
+        <div class="stack">
+          <span class="chip">PostgreSQL</span><span class="chip">MySQL</span><span class="chip">MongoDB</span><span class="chip">SQLite</span><span class="chip">AWS</span><span class="chip">Microsoft Azure</span><span class="chip">Docker</span><span class="chip">CI/CD</span><span class="chip">Git</span><span class="chip">Linux</span>
+        </div>
+      </div>
+
+      <div class="compound" style="--c:#2fb8e8">
+        <div class="compound-head">
+          <div class="tire-icon"></div>
+          <div><div class="compound-name">Intermediate — Frontend</div><div class="compound-desc">Switched in when conditions call for it — shipping full UX, not just APIs.</div></div>
+        </div>
+        <div class="stack">
+          <span class="chip">React</span><span class="chip">TypeScript</span><span class="chip">JavaScript</span><span class="chip">Electron</span><span class="chip">HTML/CSS</span>
+        </div>
+      </div>
+
+      <div class="compound" style="--c:var(--green)">
+        <div class="compound-head">
+          <div class="tire-icon"></div>
+          <div><div class="compound-name">Enterprise — Healthcare &amp; AI Tooling</div><div class="compound-desc">Production systems, interoperability, and the tools used to ship them.</div></div>
+        </div>
+        <div class="stack">
+          <span class="chip">HL7</span><span class="chip">FHIR</span><span class="chip">HIPAA</span><span class="chip">Revenue Cycle Management</span><span class="chip">OpenAI</span><span class="chip">Claude</span><span class="chip">Cursor</span><span class="chip">GitHub Copilot</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CREDENTIALS -->
+<section id="credentials">
+  <div class="wrap">
+    <div class="eyebrow">Pit Crew Credentials</div>
+    <h2 class="sector-title">Certifications &amp; Education</h2>
+    <p class="sector-sub">The training behind the driving.</p>
+    <div class="cred-grid">
+      <div class="cred-card">
+        <div class="cred-label">Certification</div>
+        <div class="cred-title">OCI Generative AI Professional</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-label">Certification</div>
+        <div class="cred-title">OCI Data Science Professional</div>
+      </div>
+      <div class="cred-card">
+        <div class="cred-label">Education</div>
+        <div class="cred-title">B.Tech, CSE (Data Analytics)</div>
+        <div class="cred-sub">VIT-AP · CGPA 8.0/10 · 2026</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<footer id="contact">
+  <div class="wrap">
+    <div class="radio-box"><span class="blip"></span> TEAM RADIO — OPEN CHANNEL</div>
+    <h2>Let's talk<br>next season.</h2>
+    <div class="contact-grid">
+      <a class="contact-link" href="mailto:harshsaini15112003@gmail.com">✉ harshsaini15112003@gmail.com</a>
+      <a class="contact-link" href="https://www.linkedin.com/in/harsh-saini-1033102a5/" target="_blank" rel="noopener">in/ LinkedIn</a>
+      <a class="contact-link" href="https://github.com/HarshStack" target="_blank" rel="noopener">⌥ GitHub — HarshStack</a>
+      <a class="contact-link" href="Harsh_Saini_Resume.pdf" download">↓ Download CV (PDF)</a>
+    </div>
+    <div class="foot-bottom">
+      <span>HARSH SAINI · GENAI / BACKEND / DATA SCIENCE</span>
+      <span>BENGALURU, INDIA</span>
+    </div>
+  </div>
+</footer>
+
+<div class="finish-line" id="finishLine">
+  <div class="finish-strip" role="img" aria-label="Chequered finish line"></div>
+  <div class="finish-text">🏁 Race Complete</div>
+  <div class="finish-sub">THANKS FOR RUNNING THE FULL LAP</div>
+</div>
+
+<script>
+  // HUD progress + telemetry driven by scroll position
+  const progPath = document.getElementById('hudProgPath');
+  const car = document.getElementById('hudCar');
+  const pathLen = progPath.getTotalLength();
+  progPath.style.strokeDasharray = pathLen;
+  progPath.style.strokeDashoffset = pathLen;
+
+  const tSpeed = document.getElementById('tSpeed');
+  const tGear = document.getElementById('tGear');
+  const tThrottle = document.getElementById('tThrottle');
+  const gears = ['N','1','2','3','4','5','6','7','8'];
+
+  function onScroll(){
+    const doc = document.documentElement;
+    const scrollTop = doc.scrollTop || document.body.scrollTop;
+    const scrollH = (doc.scrollHeight - doc.clientHeight) || 1;
+    const pct = Math.min(Math.max(scrollTop / scrollH, 0), 1);
+
+    progPath.style.strokeDashoffset = pathLen * (1 - pct);
+    const pt = progPath.getPointAtLength(pathLen * pct);
+    car.setAttribute('transform', `translate(${pt.x},${pt.y})`);
+
+    const speed = Math.round(pct * 340);
+    tSpeed.textContent = String(speed).padStart(3,'0') + ' KM/H';
+    tGear.textContent = gears[Math.min(Math.floor(pct * (gears.length-1)) + (pct>0?1:0), gears.length-1)];
+    tThrottle.style.width = Math.round(pct*100) + '%';
+  }
+  document.addEventListener('scroll', onScroll, {passive:true});
+  onScroll();
+
+  // reliable in-page anchor scrolling for normal nav/footer links
+  document.querySelectorAll('a[href^="#"]:not(#startLapBtn)').forEach(link=>{
+    link.addEventListener('click', (e)=>{
+      const id = link.getAttribute('href').slice(1);
+      const target = document.getElementById(id);
+      if(target){
+        e.preventDefault();
+        target.scrollIntoView({behavior:'smooth', block:'start'});
+      }
+    });
+  });
+
+  // "Start the Lap" — measured travel between sectors, pausing briefly so each
+  // section can be read without holding the page for more than two seconds.
+  const startLapBtn = document.getElementById('startLapBtn');
+  const raceLights = document.getElementById('raceLights');
+  const lapOrder = ['hero','experience','projects','skills','credentials','contact'];
+  let lapRunning = false;
+  const JUMP_SPEED = 420; // px per second — slower, more cinematic transitions
+
+  function animateScrollTo(targetY, duration){
+    return new Promise(resolve=>{
+      const startY = window.scrollY;
+      const change = targetY - startY;
+      if(Math.abs(change) < 1 || duration <= 0){ resolve(); return; }
+      const startTime = performance.now();
+      function step(now){
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        // cosine easing removes the hard start/stop of a linear scroll
+        const eased = 0.5 - Math.cos(progress * Math.PI) / 2;
+        window.scrollTo(0, startY + change * eased);
+        if(progress < 1){ requestAnimationFrame(step); } else { resolve(); }
+      }
+      requestAnimationFrame(step);
+    });
+  }
+
+  function idleRev(ms){
+    return new Promise(resolve=>{
+      car.classList.add('idle-rev');
+      setTimeout(()=>{
+        car.classList.remove('idle-rev');
+        resolve();
+      }, ms);
+    });
+  }
+
+  function setRaceLights(state){
+    if(!raceLights) return;
+    raceLights.classList.remove('red','yellow','green');
+    raceLights.classList.add(state);
+    raceLights.setAttribute('aria-label', `Race lights: ${state}`);
+  }
+
+  async function startLap(){
+    if(lapRunning) return;
+    lapRunning = true;
+    const originalLabel = startLapBtn.textContent;
+    const doc = document.documentElement;
+
+    startLapBtn.textContent = 'Lights Out 🏁';
+    setRaceLights('red');
+    await new Promise(r=>setTimeout(r, 900));
+    setRaceLights('yellow');
+    const firstMove = animateScrollTo(0, 400);
+    await firstMove;
+
+    const sections = lapOrder.map(id => document.getElementById(id)).filter(Boolean);
+
+    for(let i=0;i<sections.length;i++){
+      const el = sections[i];
+      const targetTop = Math.round(el.getBoundingClientRect().top + window.scrollY - 56);
+      const distance = Math.abs(targetTop - window.scrollY);
+      const duration = Math.max((distance / JUMP_SPEED) * 1000, 500);
+      startLapBtn.textContent = `Sector ${i+1}/${sections.length} ●`;
+      // lights go green the instant this label reads "Sector 2/6", and stay green after
+      if(i === 1){ setRaceLights('green'); }
+      await idleRev(700);
+      const move = animateScrollTo(targetTop, duration);
+      await move;
+    }
+
+    // make sure the very bottom (finish line) is reached
+    const maxScroll = doc.scrollHeight - doc.clientHeight;
+    if(maxScroll - window.scrollY > 4){
+      await animateScrollTo(maxScroll, 400);
+    }
+    startLapBtn.textContent = '🏁 Race Complete';
+    await new Promise(r=>setTimeout(r, 1800));
+
+    startLapBtn.textContent = originalLabel;
+    lapRunning = false;
+  }
+
+  if(startLapBtn){
+    startLapBtn.addEventListener('click', (e)=>{
+      e.preventDefault();
+      startLap();
+    });
+  }
+
+  // sector highlight via IntersectionObserver
+  const sectorEls = document.querySelectorAll('#hudSectors span');
+  const map = {};
+  sectorEls.forEach(s => map[s.dataset.s] = s);
+  const targets = ['hero','experience','projects','skills','contact'];
+  const observer = new IntersectionObserver((entries)=>{
+    entries.forEach(e=>{
+      if(e.isIntersecting){
+        sectorEls.forEach(s=>s.classList.remove('active'));
+        if(map[e.target.id]) map[e.target.id].classList.add('active');
+      }
+    });
+  }, {rootMargin:'-45% 0px -45% 0px'});
+  targets.forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) observer.observe(el);
+  });
+
+  // reveal the checkered-flag finish line whenever it comes into view
+  const finishLine = document.getElementById('finishLine');
+  if(finishLine){
+    const finishObserver = new IntersectionObserver((entries)=>{
+      entries.forEach(e=>{
+        if(e.isIntersecting) finishLine.classList.add('revealed');
+      });
+    }, {threshold:0.4});
+    finishObserver.observe(finishLine);
+  }
+</script>
+
+</body>
+</html>
